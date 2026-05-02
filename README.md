@@ -21,11 +21,13 @@
 `flutter_network_state` is a **decision engine** that sits between your app and the network. It unifies:
 
 - 🌐 **Online/Offline detection** — stream-based, always reactive
+- 🔍 **Real internet check** — DNS lookup verification, not just interface detection
 - 🎯 **Smart request strategies** — NetworkFirst, CacheFirst, CacheOnly, NetworkOnly
 - 📦 **In-memory caching** — with TTL and pluggable storage
 - 📋 **Offline request queue** — failed requests are queued and replayed automatically
 - 🔄 **Automatic sync** — queue drains when connectivity is restored
 - 🔌 **Dio interceptor** — drop-in auto-retry and offline queueing
+- 🧱 **Reactive widgets** — `NetworkBuilder` and `ConnectivityBuilder` for instant UI binding
 - 🧩 **State management ready** — built-in support for Provider, Cubit, Bloc, and Riverpod
 - 🔁 **Retry policies** — exponential, linear, constant backoff with jitter
 
@@ -457,6 +459,115 @@ final results = await manager.syncNow();
 manager.clearQueue();
 ```
 
+### Persistent queue (survives app restarts)
+
+By default, the queue is in-memory and lost on restart. For persistence, use `PersistentQueueStore`:
+
+```dart
+import 'package:path_provider/path_provider.dart';
+
+// 1. Create the persistent store
+final appDir = await getApplicationDocumentsDirectory();
+final store = PersistentQueueStore(
+  directory: appDir,
+  executor: (request) async {
+    // This callback replays persisted requests using your HTTP client
+    final response = await dio.request(
+      request.url,
+      options: Options(method: request.method, headers: request.headers),
+      data: request.body,
+    );
+    return response.data;
+  },
+);
+await store.initialize(); // Load queue from disk
+
+// 2. Inject into NetworkManager
+final manager = NetworkManager(
+  queue: RequestQueue(store: store),
+);
+
+// 3. Enqueue serializable requests (persisted to disk)
+await store.enqueueSerializable(SerializableRequest(
+  id: 'update_profile',
+  method: 'PUT',
+  url: 'https://api.example.com/profile',
+  headers: {'Authorization': 'Bearer $token'},
+  body: jsonEncode({'name': 'John'}),
+  cacheKey: 'profile',
+  maxRetries: 5,
+));
+
+// Queue survives app restarts — requests replay automatically on reconnect
+```
+
+### Hive queue store
+
+For apps already using Hive, see [`doc/hive_queue_store.md`](doc/hive_queue_store.md) — copy the implementation into your project:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+```
+
+```dart
+import 'package:hive_flutter/hive_flutter.dart';
+
+await Hive.initFlutter();
+final box = await Hive.openBox<String>('network_queue');
+
+final store = HiveQueueStore(
+  box: box,
+  executor: (req) async {
+    return await dio.request(
+      req.url,
+      options: Options(method: req.method, headers: req.headers),
+      data: req.body,
+    );
+  },
+);
+
+final manager = NetworkManager(queue: RequestQueue(store: store));
+```
+
+### sqflite queue store
+
+For apps using SQLite, see [`doc/sqflite_queue_store.md`](doc/sqflite_queue_store.md) — copy the implementation into your project:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  sqflite: ^2.3.0
+  path: ^1.8.0
+```
+
+```dart
+final store = await SqfliteQueueStore.open(
+  executor: (req) async {
+    return await dio.request(
+      req.url,
+      options: Options(method: req.method, headers: req.headers),
+      data: req.body,
+    );
+  },
+);
+
+final manager = NetworkManager(queue: RequestQueue(store: store));
+
+// Don't forget to close when done
+await store.close();
+```
+
+> **Which one should I use?**
+>
+> | Store | Best for |
+> |---|---|
+> | `PersistentQueueStore` (built-in) | Simple apps, no extra dependencies |
+> | `HiveQueueStore` | Apps already using Hive |
+> | `SqfliteQueueStore` | Apps needing SQL queries or large queues |
+
 ---
 
 ## Logging
@@ -496,32 +607,104 @@ final manager = NetworkManager(
 
 ---
 
+## Real Internet Check
+
+`connectivity_plus` only checks if a network **interface** is available — it doesn't verify actual internet access (captive portals, DNS failures, etc.). `InternetChecker` solves this:
+
+```dart
+final checker = InternetChecker();
+
+// One-shot check
+final isOnline = await checker.hasInternetAccess();
+print('Internet: $isOnline');
+
+// Periodic monitoring (emits only on change)
+checker.startPeriodicCheck();
+checker.statusStream.listen((isOnline) {
+  print('Internet changed: $isOnline');
+});
+
+// Custom config
+final checker = InternetChecker(
+  config: InternetCheckerConfig(
+    lookupAddresses: ['google.com', 'cloudflare.com'],
+    timeout: Duration(seconds: 5),
+    checkInterval: Duration(seconds: 15),
+  ),
+);
+```
+
+---
+
+## Widgets
+
+Drop-in widgets that rebuild automatically based on network state:
+
+### NetworkBuilder
+
+```dart
+NetworkBuilder(
+  manager: networkManager,
+  builder: (context, state) {
+    return switch (state) {
+      Idle()    => Text('Ready'),
+      Loading() => CircularProgressIndicator(),
+      Offline() => Text('Offline (${state.queuedRequests} queued)'),
+      Syncing() => LinearProgressIndicator(value: state.progress),
+      Success() => Text('Data: ${state.data}'),
+      Error()   => Text('Error: ${state.message}'),
+    };
+  },
+)
+```
+
+### ConnectivityBuilder
+
+```dart
+ConnectivityBuilder(
+  manager: networkManager,
+  onlineBuilder: (context) => MyMainContent(),
+  offlineBuilder: (context, queuedCount) => Column(
+    children: [
+      Icon(Icons.wifi_off),
+      Text('You are offline'),
+      Text('$queuedCount requests queued'),
+    ],
+  ),
+)
+```
+
+---
+
 ## Architecture
 
 ```
 lib/
  ├── core/
- │    ├── network_state.dart       ← Sealed state hierarchy
- │    ├── network_status.dart      ← Connectivity monitor
- │    ├── network_strategy.dart    ← Request strategies
- │    ├── retry_policy.dart        ← Backoff strategies
- │    └── logger.dart              ← Pluggable logger
+ │    ├── internet_checker.dart     ← Real internet verification (DNS)
+ │    ├── network_state.dart        ← Sealed state hierarchy
+ │    ├── network_status.dart       ← Connectivity monitor
+ │    ├── network_strategy.dart     ← Request strategies
+ │    ├── retry_policy.dart         ← Backoff strategies
+ │    └── logger.dart               ← Pluggable logger
  ├── manager/
- │    └── network_manager.dart     ← Central orchestrator
+ │    └── network_manager.dart      ← Central orchestrator
  ├── queue/
- │    └── request_queue.dart       ← Offline request queue
+ │    └── request_queue.dart        ← Offline request queue
  ├── cache/
- │    └── cache_manager.dart       ← TTL cache
+ │    └── cache_manager.dart        ← TTL cache
  ├── sync/
- │    └── sync_engine.dart         ← Auto-sync on reconnect
+ │    └── sync_engine.dart          ← Auto-sync on reconnect
  ├── dio/
- │    └── dio_interceptor.dart     ← Dio interceptor
+ │    └── dio_interceptor.dart      ← Dio interceptor
+ ├── widgets/
+ │    └── network_builder.dart      ← NetworkBuilder & ConnectivityBuilder
  ├── extensions/
- │    ├── bloc_extension.dart      ← Bloc helpers
- │    ├── cubit_extension.dart     ← Standalone Cubit base class
- │    ├── provider_extension.dart  ← ChangeNotifier for Provider
- │    └── riverpod_extension.dart  ← StateNotifier for Riverpod
- └── flutter_network_state.dart    ← Barrel export
+ │    ├── bloc_extension.dart       ← Bloc helpers
+ │    ├── cubit_extension.dart      ← Standalone Cubit base class
+ │    ├── provider_extension.dart   ← ChangeNotifier for Provider
+ │    └── riverpod_extension.dart   ← StateNotifier for Riverpod
+ └── flutter_network_state.dart     ← Barrel export
 ```
 
 Every sub-component can be injected individually for testing or customization.

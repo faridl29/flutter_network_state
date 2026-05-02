@@ -1,14 +1,40 @@
 # Changelog
 
-## 1.0.1
+## 1.1.0
 
-- Upgraded `connectivity_plus` to `^7.0.0` for latest platform support
-- Upgraded `meta` to `^1.16.0`
-- Bumped minimum Flutter version to `>=3.19.0`
+### 🚀 Feature Release
+
+**Persistent Queue**
+- Added `PersistentQueueStore` — JSON file-based queue that survives app restarts
+- Added `SerializableRequest` model for disk-safe HTTP request metadata
+- Added `RequestExecutor` callback for replaying persisted requests
+- Added `HiveQueueStore` reference implementation (`doc/hive_queue_store.md`)
+- Added `SqfliteQueueStore` reference implementation (`doc/sqflite_queue_store.md`)
+
+**Real Internet Verification**
+- Added `InternetChecker` — DNS lookup-based connectivity verification
+- Detects captive portals, DNS failures, and firewalled connections
+- Periodic monitoring with deduped status stream
+
+**Reactive Widgets**
+- Added `NetworkBuilder` — rebuilds UI based on `NetworkState` stream
+- Added `ConnectivityBuilder` — shows online/offline UI branches
+
+**State Management**
 - Added `NetworkNotifier` extension for Provider (ChangeNotifier)
 - Added `NetworkCubit` standalone Cubit base class
 - Added `NetworkStateNotifier` extension for Riverpod
-- Fixed GitHub repository URLs
+
+**Testing**
+- Added 80+ unit tests covering core, cache, queue, persistent queue, and retry
+
+**Dependencies**
+- Upgraded `connectivity_plus` to `^7.0.0`
+- Upgraded `meta` to `^1.16.0`
+- Bumped minimum Flutter version to `>=3.19.0`
+
+**Fixes**
+- Fixed GitHub repository URLs for pub.dev
 - Shortened package description for pub.dev compliance
 
 ## 1.0.0

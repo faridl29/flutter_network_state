@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "flutter_network_state",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "dependencies": [
         "connectivity_plus",
         "dio",

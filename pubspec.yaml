@@ -2,7 +2,7 @@ name: flutter_network_state
 description: >-
   Network-aware state management engine for Flutter. Offline queue, cache
   strategies, Dio interceptor, auto-sync, and Bloc-friendly sealed states.
-version: 1.0.1
+version: 1.1.0
 homepage: https://github.com/faridl29/flutter_network_state
 repository: https://github.com/faridl29/flutter_network_state
 issue_tracker: https://github.com/faridl29/flutter_network_state/issues
