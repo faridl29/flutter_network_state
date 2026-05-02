@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1
+
+- Upgraded `connectivity_plus` to `^7.0.0` for latest platform support
+- Upgraded `meta` to `^1.16.0`
+- Bumped minimum Flutter version to `>=3.19.0`
+- Added `NetworkNotifier` extension for Provider (ChangeNotifier)
+- Added `NetworkCubit` standalone Cubit base class
+- Added `NetworkStateNotifier` extension for Riverpod
+- Fixed GitHub repository URLs
+- Shortened package description for pub.dev compliance
+
 ## 1.0.0
 
 ### 🎉 Initial Release
