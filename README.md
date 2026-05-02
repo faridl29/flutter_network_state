@@ -567,7 +567,18 @@ Every sub-component can be injected individually for testing or customization.
 
 ---
 
+## 💖 Support
+
+If this package helps you build better Flutter apps, consider supporting the development:
+
+<a href="https://sociabuzz.com/faridl29/support">
+  <img src="https://img.shields.io/badge/Support_on-SociaBuzz-ff6b6b?style=for-the-badge" alt="Support on SociaBuzz">
+</a>
+
+Your support helps keep this package maintained and up-to-date. Every contribution is greatly appreciated! 🙏
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
-# flutter_network_state
