@@ -1,23 +1,22 @@
 name: flutter_network_state
-description: >
-  A network-aware state management and request orchestration engine for Flutter.
-  Provides offline/online detection, request queuing, cache strategies,
-  automatic sync, Dio integration, and Bloc-friendly state streams.
+description: >-
+  Network-aware state management engine for Flutter. Offline queue, cache
+  strategies, Dio interceptor, auto-sync, and Bloc-friendly sealed states.
 version: 1.0.0
-homepage: https://github.com/miftahfaridlal-anshari/flutter_network_state
-repository: https://github.com/miftahfaridlal-anshari/flutter_network_state
-issue_tracker: https://github.com/miftahfaridlal-anshari/flutter_network_state/issues
+homepage: https://github.com/faridl29/flutter_network_state
+repository: https://github.com/faridl29/flutter_network_state
+issue_tracker: https://github.com/faridl29/flutter_network_state/issues
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
-  flutter: '>=3.10.0'
+  flutter: '>=3.19.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  connectivity_plus: ^6.0.0
+  connectivity_plus: ^7.0.0
   dio: ^5.4.0
-  meta: ^1.9.0
+  meta: ^1.16.0
 
 dev_dependencies:
   flutter_test:
